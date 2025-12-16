@@ -2,27 +2,28 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>護眼待機鐘</title>
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <style>
         :root {
             --bg-color: #000000;
-            /* 預設：溫潤奶白 (Warm Milk) - 比純白更柔和 */
-            --text-color: #f4f1de; 
+            --text-color: #f4f1de; /* 預設奶白 */
             --alert-bg: #f4f1de;
             --alert-text: #000000;
+            --ui-opacity: 0.3; /* UI 平常很淡 */
+            --ui-opacity-hover: 1;
         }
 
         body {
             background-color: var(--bg-color);
             color: var(--text-color);
-            font-family: 'Courier New', Courier, monospace, sans-serif; /* 改用等寬字體更有電子鐘感 */
+            font-family: 'Courier New', Courier, monospace, sans-serif;
             margin: 0;
             height: 100vh;
+            width: 100vw;
             display: flex;
-            flex-direction: column;
             justify-content: center;
             align-items: center;
             overflow: hidden;
@@ -32,157 +33,139 @@
             -webkit-tap-highlight-color: transparent;
         }
 
-        /* --- 1. 時鐘模式 --- */
+        /* --- 1. 極致縮放時鐘 --- */
         #clock-wrapper {
             display: flex;
             align-items: center;
             justify-content: center;
-        }
-
-        .time-digit {
-            font-size: 25vw;
-            font-weight: bold;
+            width: 100%;
+            height: 100%;
+            /* 核心魔法：
+               直式看寬度(vw)，橫式看高度(vh)。
+               min(32vw, 55vh) 確保字體永遠盡可能大，但不會超出邊界 */
+            font-size: min(32vw, 55vh); 
             line-height: 1;
-            letter-spacing: -2px;
+            font-weight: bold;
+            letter-spacing: -0.05em; /* 稍微緊湊一點 */
         }
 
-        /* 冒號閃爍動畫 */
         .colon {
-            font-size: 22vw; /* 稍微小一點點看起來比較平衡 */
-            font-weight: bold;
-            line-height: 1;
-            margin: 0 1vw;
-            animation: blink 1s steps(1) infinite; /* 每秒閃一次 */
+            margin: 0 0.05em; /* 相對單位 */
+            position: relative;
+            top: -0.05em; /* 微調垂直位置 */
+            animation: blink 1s steps(1) infinite;
         }
 
         @keyframes blink {
             0%, 100% { opacity: 1; }
-            50% { opacity: 0.2; } /* 不要全黑，留一點殘影比較有質感 */
+            50% { opacity: 0.2; }
         }
 
-        /* --- 2. 警示模式 (高對比呼吸) --- */
+        /* --- 2. 警示呼吸模式 --- */
         @keyframes slow-breath {
             0%, 100% { background-color: var(--bg-color); color: var(--text-color); }
             50% { background-color: var(--alert-bg); color: var(--alert-text); }
         }
+        body.alert-mode { animation: slow-breath 4s infinite ease-in-out; }
 
-        body.alert-mode {
-            animation: slow-breath 4s infinite ease-in-out;
-        }
-        
-        /* --- 3. 指令與引導模式 --- */
+        /* --- 3. 訊息引導 (絕對置中) --- */
         #message-area {
             display: none;
-            text-align: center;
-            padding: 20px;
-            max-width: 90%;
-            position: absolute; /* 讓它疊在時鐘上面或取代它 */
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            width: 100%;
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            flex-direction: column; justify-content: center; align-items: center;
+            text-align: center; z-index: 10;
         }
 
-        #action-title {
-            font-size: 10vw;
-            font-weight: bold;
-            margin-bottom: 30px;
-        }
+        #action-title { font-size: min(10vw, 8vh); font-weight: bold; margin-bottom: 5vh; }
+        #action-desc { font-size: min(5vw, 4vh); opacity: 0.8; line-height: 1.5; padding: 0 20px;}
+        #countdown-number { font-size: min(30vw, 40vh); font-weight: bold; }
 
-        #action-desc {
-            font-size: 5vw;
-            opacity: 0.8;
-            line-height: 1.6;
-        }
+        .hidden { display: none !important; }
+        .transparent { opacity: 0; pointer-events: none; }
 
-        #countdown-number {
-            font-size: 20vw;
-            font-weight: bold;
-        }
-
-        /* 隱藏元素 */
-        .hidden { visibility: hidden; opacity: 0; transition: opacity 0.3s; }
-        .gone { display: none !important; }
-
-        /* --- 4. 底部控制區 (顏色與測試) --- */
-        #controls {
+        /* --- 4. UI 控制項 (角落懸浮) --- */
+        .control-btn {
             position: fixed;
-            bottom: 30px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 15px;
             z-index: 100;
-        }
-
-        /* 顏色選擇器 */
-        #color-picker {
+            background: rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(4px);
+            border-radius: 50%;
+            width: 44px; /* 手指好按的大小 */
+            height: 44px;
             display: flex;
-            gap: 15px;
-            background: rgba(255,255,255,0.1);
-            padding: 8px 15px;
-            border-radius: 20px;
+            justify-content: center;
+            align-items: center;
+            opacity: var(--ui-opacity);
+            transition: all 0.3s ease;
+            color: var(--text-color);
+        }
+        .control-btn:hover, .control-btn.active { opacity: var(--ui-opacity-hover); background: rgba(255, 255, 255, 0.25); }
+        .control-btn svg { width: 20px; height: 20px; fill: currentColor; }
+
+        /* 右上角：測試播放鍵 */
+        #btn-test { top: 20px; right: 20px; }
+
+        /* 左上角：調色盤 */
+        #btn-palette { top: 20px; left: 20px; }
+
+        /* 顏色選單 (摺疊邏輯) */
+        #color-menu {
+            position: fixed;
+            top: 20px; left: 74px; /* 放在按鈕右邊 */
+            display: flex;
+            gap: 10px;
+            background: rgba(50, 50, 50, 0.8);
+            padding: 8px 12px;
+            border-radius: 30px;
+            z-index: 99;
+            transform: translateX(-20px);
+            opacity: 0;
+            pointer-events: none;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        /* 展開狀態 */
+        #color-menu.expanded {
+            transform: translateX(0);
+            opacity: 1;
+            pointer-events: auto;
         }
 
         .color-dot {
-            width: 24px;
-            height: 24px;
-            border-radius: 50%;
-            border: 2px solid rgba(255,255,255,0.2);
-            cursor: pointer;
-            transition: transform 0.2s;
+            width: 24px; height: 24px; border-radius: 50%;
+            border: 2px solid rgba(255,255,255,0.3); cursor: pointer;
         }
-        .color-dot:active { transform: scale(0.9); }
-
-        /* 測試按鈕 (常駐顯示) */
-        #test-btn {
-            padding: 8px 16px;
-            background: rgba(255, 255, 255, 0.15);
-            color: var(--text-color);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            border-radius: 20px;
-            font-size: 14px;
-            cursor: pointer;
-            backdrop-filter: blur(4px);
-            opacity: 0.6; /* 半透明不搶戲 */
-            transition: opacity 0.2s;
-        }
-        #test-btn:active { opacity: 1; background: rgba(255, 255, 255, 0.3); }
+        .color-dot:active { transform: scale(0.8); }
 
     </style>
 </head>
 <body>
 
     <div id="clock-wrapper">
-        <span class="time-digit" id="hour">00</span>
-        <span class="colon">:</span>
-        <span class="time-digit" id="minute">00</span>
+        <span id="hour">00</span><span class="colon">:</span><span id="minute">00</span>
     </div>
 
     <div id="message-area">
         <div id="action-title"></div>
-        <div id="countdown-number" class="gone"></div>
+        <div id="countdown-number" class="hidden"></div>
         <div id="action-desc"></div>
     </div>
 
-    <div id="controls">
-        <div id="color-picker" onclick="event.stopPropagation()">
-            <div class="color-dot" style="background: #f4f1de;" onclick="setColor('#f4f1de')"></div>
-            <div class="color-dot" style="background: #ffb703;" onclick="setColor('#ffb703')"></div>
-            <div class="color-dot" style="background: #55efc4;" onclick="setColor('#55efc4')"></div>
-            <div class="color-dot" style="background: #b2bec3;" onclick="setColor('#b2bec3')"></div>
-        </div>
+    <div id="btn-palette" class="control-btn" onclick="event.stopPropagation(); toggleColorMenu()">
+        <svg viewBox="0 0 24 24"><path d="M12 3c-4.97 0-9 4.03-9 9s4.03 9 9 9c.83 0 1.5-.67 1.5-1.5 0-.39-.15-.74-.39-1.01-.23-.26-.38-.61-.38-.99 0-.83.67-1.5 1.5-1.5H16c2.76 0 5-2.24 5-5 0-4.42-4.03-8-9-8zm-5.5 9c-.83 0-1.5-.67-1.5-1.5S5.67 9 6.5 9 8 9.67 8 10.5 7.33 12 6.5 12zm3-4C8.67 8 8 7.33 8 6.5S8.67 5 9.5 5s1.5.67 1.5 1.5S10.33 8 9.5 8zm5 0c-.83 0-1.5-.67-1.5-1.5S13.67 5 14.5 5s1.5.67 1.5 1.5S15.33 8 14.5 8zm3 4c-.83 0-1.5-.67-1.5-1.5S16.67 9 17.5 9s1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"/></svg>
+    </div>
 
-        <button id="test-btn" onclick="event.stopPropagation(); triggerAlert()">
-            ⚡ 測試觸發 (20分)
-        </button>
+    <div id="color-menu">
+        <div class="color-dot" style="background: #f4f1de;" onclick="setColor('#f4f1de')"></div> <div class="color-dot" style="background: #ffb703;" onclick="setColor('#ffb703')"></div> <div class="color-dot" style="background: #55efc4;" onclick="setColor('#55efc4')"></div> <div class="color-dot" style="background: #b2bec3;" onclick="setColor('#b2bec3')"></div> <div class="color-dot" style="background: #ff7675;" onclick="setColor('#ff7675')"></div> </div>
+
+    <div id="btn-test" class="control-btn" onclick="event.stopPropagation(); triggerAlert()">
+        <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
     </div>
 
     <script>
         // --- 設定 ---
         const WORK_INTERVAL = 20 * 60 * 1000; 
 
-        // --- 護眼菜單 ---
         const EXERCISES = [
             { title: "遠眺放鬆", desc: "看向遠方，放空眼神", duration: 20 },
             { title: "用力眨眼", desc: "用力閉眼再張開，重複動作", duration: 10 },
@@ -196,16 +179,15 @@
         let workTimer = null;
         let guideTimer = null;
 
-        // DOM
+        // DOM Elements
         const elBody = document.body;
         const elClockWrapper = document.getElementById('clock-wrapper');
-        const elHour = document.getElementById('hour');
-        const elMinute = document.getElementById('minute');
         const elMsgArea = document.getElementById('message-area');
         const elTitle = document.getElementById('action-title');
         const elDesc = document.getElementById('action-desc');
         const elCount = document.getElementById('countdown-number');
-        const elControls = document.getElementById('controls');
+        const elColorMenu = document.getElementById('color-menu');
+        const elPaletteBtn = document.getElementById('btn-palette');
 
         // 1. 時鐘邏輯
         function startClock() {
@@ -216,8 +198,8 @@
 
         function updateClock() {
             const now = new Date();
-            elHour.innerText = String(now.getHours()).padStart(2, '0');
-            elMinute.innerText = String(now.getMinutes()).padStart(2, '0');
+            document.getElementById('hour').innerText = String(now.getHours()).padStart(2, '0');
+            document.getElementById('minute').innerText = String(now.getMinutes()).padStart(2, '0');
         }
 
         function resetWorkTimer() {
@@ -225,24 +207,53 @@
             workTimer = setTimeout(triggerAlert, WORK_INTERVAL);
         }
 
-        // 2. 顏色切換
+        // 2. 顏色選單控制
+        window.toggleColorMenu = function() {
+            const isExpanded = elColorMenu.classList.contains('expanded');
+            if (isExpanded) {
+                elColorMenu.classList.remove('expanded');
+                elPaletteBtn.classList.remove('active');
+            } else {
+                elColorMenu.classList.add('expanded');
+                elPaletteBtn.classList.add('active');
+            }
+        }
+        
+        // 點擊別處關閉選單
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('#btn-palette') && !e.target.closest('#color-menu')) {
+                elColorMenu.classList.remove('expanded');
+                elPaletteBtn.classList.remove('active');
+            }
+        });
+
         window.setColor = function(color) {
             document.documentElement.style.setProperty('--text-color', color);
             document.documentElement.style.setProperty('--alert-bg', color);
+            // 選完自動關閉
+            elColorMenu.classList.remove('expanded');
+            elPaletteBtn.classList.remove('active');
         }
 
-        // 3. 觸發警報
+        // 3. 警報邏輯
         window.triggerAlert = function() {
             if (currentState !== State.CLOCK) return;
             currentState = State.ALERT;
             elBody.classList.add('alert-mode');
             
-            // 警報時隱藏底部控制區，專注休息
-            elControls.classList.add('hidden');
+            // 警報時隱藏 UI
+            elPaletteBtn.classList.add('hidden');
+            document.getElementById('btn-test').classList.add('hidden');
+            elColorMenu.classList.remove('expanded'); // 強制關選單
         }
 
-        // 4. 互動處理
-        document.body.addEventListener('click', handleInteraction);
+        // 4. 互動邏輯 (核心狀態機)
+        document.body.addEventListener('click', () => {
+            // 確保不是點到 UI 按鈕才觸發
+            if (event.target.closest('.control-btn') || event.target.closest('#color-menu')) return;
+            handleInteraction();
+        });
+
         document.body.addEventListener('keydown', (e) => {
             if (e.code === 'Space' || e.code === 'Enter') handleInteraction();
         });
@@ -250,17 +261,14 @@
         function handleInteraction() {
             switch (currentState) {
                 case State.CLOCK:
-                    // 一般模式點擊無效
+                    // 可做：顯示還剩幾分鐘？暫時不做反應
                     break;
-
                 case State.ALERT:
                     showInstruction();
                     break;
-
                 case State.INSTRUCT:
                     startGuiding();
                     break;
-
                 case State.GUIDE:
                     finishExercise();
                     break;
@@ -274,21 +282,20 @@
             const ex = EXERCISES[Math.floor(Math.random() * EXERCISES.length)];
             window.currentEx = ex;
 
-            // UI 切換
-            elClockWrapper.classList.add('gone');
-            elMsgArea.style.display = 'block';
-            elCount.classList.add('gone');
-            elDesc.classList.remove('gone');
+            // 切換畫面：時鐘淡出，文字淡入
+            elClockWrapper.classList.add('hidden');
+            elMsgArea.style.display = 'flex'; // 設為 flex 才能置中
             
             elTitle.innerText = ex.title;
             elDesc.innerText = ex.desc + "\n\n(再次點擊開始計時)";
+            elDesc.classList.remove('hidden');
+            elCount.classList.add('hidden');
         }
 
         function startGuiding() {
             currentState = State.GUIDE;
-            
-            elDesc.classList.add('gone'); // 隱藏文字
-            elCount.classList.remove('gone'); // 顯示大數字
+            elDesc.classList.add('hidden');
+            elCount.classList.remove('hidden');
             elCount.innerText = window.currentEx.duration;
             
             let timeLeft = window.currentEx.duration;
@@ -304,17 +311,20 @@
             currentState = State.CLOCK;
             
             elTitle.innerText = "完成休息";
-            elCount.classList.add('gone');
+            elCount.classList.add('hidden');
             
             setTimeout(() => {
                 elMsgArea.style.display = 'none';
-                elClockWrapper.classList.remove('gone');
-                elControls.classList.remove('hidden'); // 恢復控制區
+                elClockWrapper.classList.remove('hidden');
+                
+                // UI 恢復
+                elPaletteBtn.classList.remove('hidden');
+                document.getElementById('btn-test').classList.remove('hidden');
+                
                 resetWorkTimer();
             }, 1000);
         }
 
-        // 啟動
         startClock();
     </script>
 </body>
