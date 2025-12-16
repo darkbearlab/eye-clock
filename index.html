@@ -9,15 +9,16 @@
     <style>
         :root {
             --bg-color: #000000;
-            --text-color: #ffffff;
-            --alert-bg: #ffffff;
+            /* 預設：溫潤奶白 (Warm Milk) - 比純白更柔和 */
+            --text-color: #f4f1de; 
+            --alert-bg: #f4f1de;
             --alert-text: #000000;
         }
 
         body {
             background-color: var(--bg-color);
             color: var(--text-color);
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            font-family: 'Courier New', Courier, monospace, sans-serif; /* 改用等寬字體更有電子鐘感 */
             margin: 0;
             height: 100vh;
             display: flex;
@@ -25,27 +26,48 @@
             justify-content: center;
             align-items: center;
             overflow: hidden;
-            transition: background-color 0.5s, color 0.5s; /* 平滑過渡 */
+            transition: background-color 0.5s, color 0.5s;
             cursor: pointer;
-            user-select: none; /* 防止點擊時選取文字 */
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
         }
 
         /* --- 1. 時鐘模式 --- */
-        #clock-display {
-            font-size: 25vw; /* 超大字體 */
-            font-weight: bold;
-            font-variant-numeric: tabular-nums; /* 數字等寬，避免跳動 */
-            letter-spacing: -5px;
+        #clock-wrapper {
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
 
-        /* --- 2. 警示模式 (高對比閃爍) --- */
-        @keyframes slow-blink {
+        .time-digit {
+            font-size: 25vw;
+            font-weight: bold;
+            line-height: 1;
+            letter-spacing: -2px;
+        }
+
+        /* 冒號閃爍動畫 */
+        .colon {
+            font-size: 22vw; /* 稍微小一點點看起來比較平衡 */
+            font-weight: bold;
+            line-height: 1;
+            margin: 0 1vw;
+            animation: blink 1s steps(1) infinite; /* 每秒閃一次 */
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.2; } /* 不要全黑，留一點殘影比較有質感 */
+        }
+
+        /* --- 2. 警示模式 (高對比呼吸) --- */
+        @keyframes slow-breath {
             0%, 100% { background-color: var(--bg-color); color: var(--text-color); }
             50% { background-color: var(--alert-bg); color: var(--alert-text); }
         }
 
         body.alert-mode {
-            animation: slow-blink 4s infinite ease-in-out; /* 4秒一次，非常緩慢 */
+            animation: slow-breath 4s infinite ease-in-out;
         }
         
         /* --- 3. 指令與引導模式 --- */
@@ -53,175 +75,174 @@
             display: none;
             text-align: center;
             padding: 20px;
-            max-width: 80%;
+            max-width: 90%;
+            position: absolute; /* 讓它疊在時鐘上面或取代它 */
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 100%;
         }
 
         #action-title {
-            font-size: 8vw;
+            font-size: 10vw;
             font-weight: bold;
-            margin-bottom: 20px;
+            margin-bottom: 30px;
         }
 
         #action-desc {
-            font-size: 4vw;
-            color: #888;
-            line-height: 1.5;
+            font-size: 5vw;
+            opacity: 0.8;
+            line-height: 1.6;
         }
 
-        /* 倒數計時圈圈 */
-        .timer-ring {
-            display: none;
-            width: 200px;
-            height: 200px;
-            border-radius: 50%;
-            border: 10px solid #333;
-            border-top: 10px solid var(--text-color);
-            animation: spin 1s linear infinite;
-            margin: 0 auto 20px auto;
-        }
-        
         #countdown-number {
-            font-size: 15vw;
+            font-size: 20vw;
             font-weight: bold;
         }
 
         /* 隱藏元素 */
-        .hidden { display: none !important; }
+        .hidden { visibility: hidden; opacity: 0; transition: opacity 0.3s; }
+        .gone { display: none !important; }
 
-        /* 測試按鈕 (滑鼠移過去才會出現) */
-        #test-btn {
+        /* --- 4. 底部控制區 (顏色與測試) --- */
+        #controls {
             position: fixed;
-            bottom: 10px;
-            right: 10px;
-            opacity: 0;
-            padding: 10px;
-            background: #333;
-            color: white;
-            border: none;
-            border-radius: 5px;
-            font-size: 12px;
-            transition: opacity 0.3s;
+            bottom: 30px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 15px;
+            z-index: 100;
         }
-        #test-btn:hover { opacity: 1; }
+
+        /* 顏色選擇器 */
+        #color-picker {
+            display: flex;
+            gap: 15px;
+            background: rgba(255,255,255,0.1);
+            padding: 8px 15px;
+            border-radius: 20px;
+        }
+
+        .color-dot {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            border: 2px solid rgba(255,255,255,0.2);
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        .color-dot:active { transform: scale(0.9); }
+
+        /* 測試按鈕 (常駐顯示) */
+        #test-btn {
+            padding: 8px 16px;
+            background: rgba(255, 255, 255, 0.15);
+            color: var(--text-color);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 20px;
+            font-size: 14px;
+            cursor: pointer;
+            backdrop-filter: blur(4px);
+            opacity: 0.6; /* 半透明不搶戲 */
+            transition: opacity 0.2s;
+        }
+        #test-btn:active { opacity: 1; background: rgba(255, 255, 255, 0.3); }
 
     </style>
 </head>
 <body>
 
-    <div id="clock-display">00:00</div>
+    <div id="clock-wrapper">
+        <span class="time-digit" id="hour">00</span>
+        <span class="colon">:</span>
+        <span class="time-digit" id="minute">00</span>
+    </div>
 
     <div id="message-area">
         <div id="action-title"></div>
-        <div id="countdown-number"></div>
+        <div id="countdown-number" class="gone"></div>
         <div id="action-desc"></div>
     </div>
 
-    <button id="test-btn" onclick="event.stopPropagation(); triggerAlert()">⚡ 測試觸發</button>
+    <div id="controls">
+        <div id="color-picker" onclick="event.stopPropagation()">
+            <div class="color-dot" style="background: #f4f1de;" onclick="setColor('#f4f1de')"></div>
+            <div class="color-dot" style="background: #ffb703;" onclick="setColor('#ffb703')"></div>
+            <div class="color-dot" style="background: #55efc4;" onclick="setColor('#55efc4')"></div>
+            <div class="color-dot" style="background: #b2bec3;" onclick="setColor('#b2bec3')"></div>
+        </div>
+
+        <button id="test-btn" onclick="event.stopPropagation(); triggerAlert()">
+            ⚡ 測試觸發 (20分)
+        </button>
+    </div>
 
     <script>
         // --- 設定 ---
-        const WORK_INTERVAL = 20 * 60 * 1000; // 20分鐘 (毫秒)
-        // const WORK_INTERVAL = 5000; // 開發測試用：5秒
+        const WORK_INTERVAL = 20 * 60 * 1000; 
 
         // --- 護眼菜單 ---
         const EXERCISES = [
-            {
-                title: "遠眺放鬆",
-                desc: "請看向 6 公尺外的遠方，放空眼神。",
-                duration: 20, // 秒
-                guideType: "countdown"
-            },
-            {
-                title: "用力眨眼",
-                desc: "用力閉上眼睛，再張開，重複動作。",
-                duration: 10,
-                guideType: "countdown"
-            },
-            {
-                title: "眼球轉動",
-                desc: "順時針轉動眼球 3 圈，再逆時針轉 3 圈。",
-                duration: 15,
-                guideType: "countdown"
-            },
-            {
-                title: "掌心熱敷",
-                desc: "摩擦雙手生熱，輕蓋在閉著的眼睛上。",
-                duration: 30,
-                guideType: "countdown"
-            },
-            {
-                title: "看近看遠",
-                desc: "伸出大拇指看指尖，再看遠方，來回切換焦點。",
-                duration: 15,
-                guideType: "countdown"
-            }
+            { title: "遠眺放鬆", desc: "看向遠方，放空眼神", duration: 20 },
+            { title: "用力眨眼", desc: "用力閉眼再張開，重複動作", duration: 10 },
+            { title: "眼球轉動", desc: "順時針轉三圈，逆時針轉三圈", duration: 15 },
+            { title: "掌心熱敷", desc: "雙手搓熱，輕蓋眼皮", duration: 30 },
+            { title: "焦點切換", desc: "看拇指近處，再看遠方", duration: 15 }
         ];
 
-        // --- 狀態機 ---
-        const State = {
-            CLOCK: 'CLOCK',      // 平常時鐘
-            ALERT: 'ALERT',      // 閃爍提醒中
-            INSTRUCT: 'INSTRUCT',// 顯示要做什麼
-            GUIDE: 'GUIDE'       // 正在做運動(倒數)
-        };
-
+        const State = { CLOCK: 'CLOCK', ALERT: 'ALERT', INSTRUCT: 'INSTRUCT', GUIDE: 'GUIDE' };
         let currentState = State.CLOCK;
-        let lastInteractionTime = Date.now();
-        let currentExercise = null;
-        let guideTimer = null;
         let workTimer = null;
+        let guideTimer = null;
 
-        // DOM 元素
+        // DOM
         const elBody = document.body;
-        const elClock = document.getElementById('clock-display');
+        const elClockWrapper = document.getElementById('clock-wrapper');
+        const elHour = document.getElementById('hour');
+        const elMinute = document.getElementById('minute');
         const elMsgArea = document.getElementById('message-area');
         const elTitle = document.getElementById('action-title');
         const elDesc = document.getElementById('action-desc');
         const elCount = document.getElementById('countdown-number');
+        const elControls = document.getElementById('controls');
 
-        // --- 核心邏輯 ---
-
-        // 1. 啟動時鐘
+        // 1. 時鐘邏輯
         function startClock() {
             updateClock();
             setInterval(updateClock, 1000);
-            
-            // 啟動工作計時器
             resetWorkTimer();
         }
 
-        // 更新畫面上的時間
         function updateClock() {
             const now = new Date();
-            const hours = String(now.getHours()).padStart(2, '0');
-            const minutes = String(now.getMinutes()).padStart(2, '0');
-            elClock.innerText = `${hours}:${minutes}`;
+            elHour.innerText = String(now.getHours()).padStart(2, '0');
+            elMinute.innerText = String(now.getMinutes()).padStart(2, '0');
         }
 
-        // 重置 20 分鐘計時
         function resetWorkTimer() {
             if (workTimer) clearTimeout(workTimer);
             workTimer = setTimeout(triggerAlert, WORK_INTERVAL);
-            console.log("計時開始：20分鐘後提醒");
         }
 
-        // 2. 觸發警報 (State: ALERT)
+        // 2. 顏色切換
+        window.setColor = function(color) {
+            document.documentElement.style.setProperty('--text-color', color);
+            document.documentElement.style.setProperty('--alert-bg', color);
+        }
+
+        // 3. 觸發警報
         window.triggerAlert = function() {
-            if (currentState !== State.CLOCK) return; // 已經在忙就別吵
-            
+            if (currentState !== State.CLOCK) return;
             currentState = State.ALERT;
-            elBody.classList.add('alert-mode'); // 開始閃爍
+            elBody.classList.add('alert-mode');
             
-            // 在時鐘下方顯示提示 (選用)
-            // elClock.style.opacity = '0.5'; 
+            // 警報時隱藏底部控制區，專注休息
+            elControls.classList.add('hidden');
         }
 
-        // 3. 畫面點擊處理 (狀態切換核心)
-        document.body.addEventListener('click', () => {
-            handleInteraction();
-        });
-
-        // 也可以按空白鍵
+        // 4. 互動處理
+        document.body.addEventListener('click', handleInteraction);
         document.body.addEventListener('keydown', (e) => {
             if (e.code === 'Space' || e.code === 'Enter') handleInteraction();
         });
@@ -229,90 +250,72 @@
         function handleInteraction() {
             switch (currentState) {
                 case State.CLOCK:
-                    // 平常點擊螢幕，不一定是誤觸，可以是重置計時？
-                    // 這裡暫時不做反應，或是顯示「還有 xx 分鐘休息」
+                    // 一般模式點擊無效
                     break;
 
                 case State.ALERT:
-                    // 第一次按：停止閃爍，顯示指令
                     showInstruction();
                     break;
 
                 case State.INSTRUCT:
-                    // 第二次按：開始引導 (倒數)
                     startGuiding();
                     break;
 
                 case State.GUIDE:
-                    // 引導中點擊：提早結束
                     finishExercise();
                     break;
             }
         }
 
-        // State: INSTRUCT
         function showInstruction() {
             currentState = State.INSTRUCT;
-            elBody.classList.remove('alert-mode'); // 停閃
+            elBody.classList.remove('alert-mode');
             
-            // 隨機選一個運動
-            currentExercise = EXERCISES[Math.floor(Math.random() * EXERCISES.length)];
-            
+            const ex = EXERCISES[Math.floor(Math.random() * EXERCISES.length)];
+            window.currentEx = ex;
+
             // UI 切換
-            elClock.classList.add('hidden');
+            elClockWrapper.classList.add('gone');
             elMsgArea.style.display = 'block';
-            elCount.classList.add('hidden'); // 先藏倒數
+            elCount.classList.add('gone');
+            elDesc.classList.remove('gone');
             
-            elTitle.innerText = currentExercise.title;
-            elDesc.innerText = currentExercise.desc + "\n\n(點擊畫面開始計時)";
-            elDesc.style.fontSize = "4vw"; // 恢復說明文字大小
+            elTitle.innerText = ex.title;
+            elDesc.innerText = ex.desc + "\n\n(再次點擊開始計時)";
         }
 
-        // State: GUIDE
         function startGuiding() {
             currentState = State.GUIDE;
             
-            elDesc.innerText = "保持動作...";
-            elCount.classList.remove('hidden');
-            elCount.innerText = currentExercise.duration;
+            elDesc.classList.add('gone'); // 隱藏文字
+            elCount.classList.remove('gone'); // 顯示大數字
+            elCount.innerText = window.currentEx.duration;
             
-            let timeLeft = currentExercise.duration;
-            
-            // 倒數計時邏輯
+            let timeLeft = window.currentEx.duration;
             guideTimer = setInterval(() => {
                 timeLeft--;
                 elCount.innerText = timeLeft;
-                
-                if (timeLeft <= 0) {
-                    finishExercise();
-                }
+                if (timeLeft <= 0) finishExercise();
             }, 1000);
         }
 
-        // 回到 State: CLOCK
         function finishExercise() {
             if (guideTimer) clearInterval(guideTimer);
-            
             currentState = State.CLOCK;
             
-            // 顯示完成訊息一下下
-            elTitle.innerText = "完成！";
-            elDesc.innerText = "眼睛舒服多了";
-            elCount.classList.add('hidden');
+            elTitle.innerText = "完成休息";
+            elCount.classList.add('gone');
             
             setTimeout(() => {
-                // UI 恢復
                 elMsgArea.style.display = 'none';
-                elClock.classList.remove('hidden');
-                
-                // 重啟 20 分鐘計時
+                elClockWrapper.classList.remove('gone');
+                elControls.classList.remove('hidden'); // 恢復控制區
                 resetWorkTimer();
-            }, 1500);
+            }, 1000);
         }
 
-        // 初始化
+        // 啟動
         startClock();
-
     </script>
 </body>
 </html>
